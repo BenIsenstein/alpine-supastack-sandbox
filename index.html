@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <!-- <link rel="icon" type="image/svg+xml" href="/vite.svg"> -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@unocss/reset/tailwind-compat.min.css">
+    <style>[un-cloak]{display: none;}</style>
+    <script src="https://cdn.jsdelivr.net/npm/@unocss/runtime/preset-icons.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@unocss/runtime/preset-uno.global.js"></script>
+    <script>
+      window.__unocss = {
+        presets: [
+          () => window.__unocss_runtime.presets.presetIcons({ cdn: 'https://cdn.jsdelivr.net/npm/' }),
+          () => window.__unocss_runtime.presets.presetUno(),
+        ],
+      }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@unocss/runtime/core.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.5"></script>
+    <script src="https://cdn.jsdelivr.net/gh/benisenstein/script-zoo/supabaseAuthUiSharedShim.min.js"></script>
+    <script>
+      const { en_default, merge, capitalize, VIEWS } = window.__supabase_auth_ui_shared
+
+      document.addEventListener('alpine:init', () => {
+        Alpine.store('app', {
+          supabase: window.supabase.createClient('https://qeiddezoophyqazkmwtq.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFlaWRkZXpvb3BoeXFhemttd3RxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDQ5MjkwMjIsImV4cCI6MjAyMDUwNTAyMn0.x0F4EB1cdpdFx_1Le0xa4xdrN3iOV8pVrEsNiGrnmx0'),
+          session: null,
+          get user() {
+            return this.session?.user ?? null
+          },
+          error: null,
+          async withCaptureAuthError(cb) {
+            this.error = null
+            const result = await cb()
+            if (result.error) {
+              this.error = result.error
+            }
+            return result
+          },
+          init() {
+            this.supabase.auth.onAuthStateChange(async (_, session) => { this.session = session })
+            this.withCaptureAuthError = this.withCaptureAuthError.bind(this)
+          }
+        })
+
+        Alpine.store('authView', {
+          views: [
+            { id: 'sign_in', title: 'Sign In' },
+            { id: 'sign_up', title: 'Sign Up' },
+            { id: 'magic_link', title: 'Magic Link' },
+            { id: 'forgotten_password', title: 'Forgotten Password' },
+            { id: 'update_password', title: 'Update Password' },
+            { id: 'verify_otp', title: 'Verify Otp' },
+          ],
+          view: 'sign_in'
+        })
+
+        /**
+         * @typedef {Object} AuthProps
+         * @property {string[]} [providers] - Array of authentication providers.
+         * @property {Partial<Record<string, string>>} [providerScopes] - Partial object representing provider scopes.
+         * @property {Record<string, string>} [queryParams] - Object representing query parameters.
+         * @property {string} view - The type of view.
+         * @property {string | undefined} [redirectTo] - URL to redirect to after authentication.
+         * @property {boolean} [onlyThirdPartyProviders] - Indicates if only third-party providers are allowed.
+         * @property {boolean} [magicLink] - Indicates if magic link authentication is enabled.
+         * @property {boolean} [showLinks] - Indicates if links should be displayed.
+         * @property {'phone' | 'email'} [otpType] - Type of one-time password (OTP).
+         * @property {Record<string, unknown>} [additionalData] - Additional data as key-value pairs.
+         * @property {Object} [localization] - Localization configuration.
+         * @property {I18nVariables} [localization.variables] - Variables for internationalization.
+        */
+        Alpine.data('authUI', (setupProps) => {
+          const { localization, otpType, redirectTo, providers, providerScopes, queryParams, additionalData, magicLink, onlyThirdPartyProviders, showLinks } = setupProps
+          const view = Alpine.store('authView').view
+
+          return {
+            showLinks: showLinks ?? true,
+            isMounted: false,
+            providers,
+            providerScopes,
+            onlyThirdPartyProviders,
+            email: '',
+            password: '',
+            phone: '',
+            token: '',
+            message: '',
+            loading: false,
+            i18n: merge(en_default, localization?.variables ?? {}),
+            get isSignView() {
+              const view = Alpine.store('authView').view
+              return view === 'sign_in' || view === 'sign_up' || view === 'magic_link'
+            },
+            get isPhone() {
+              return otpType === 'sms' || otpType === 'phone_change'
+            },
+            get labels() {
+              return this.i18n?.[Alpine.store('authView').view]
+            },
+            get inputs() {
+              const inputs = []
+              const view = Alpine.store('authView').view
+
+              if (this.isSignView || view === VIEWS.FORGOTTEN_PASSWORD || (view === VIEWS.VERIFY_OTP && !this.isPhone)) {
+                inputs.push({
+                  id: "email",
+                  type: "email",
+                  autoFocus: true,
+                  placeholder: this.labels?.email_input_placeholder,
+                  label: (view === VIEWS.MAGIC_LINK  || view === VIEWS.VERIFY_OTP) ? this.labels?.email_input_label : this.labels?.email_label,
+                  onChange: (val) => { this.email = val }
+                })
+              }
+
+              if (view === VIEWS.SIGN_IN || view === VIEWS.SIGN_UP || view === VIEWS.UPDATE_PASSWORD) {
+                inputs.push({
+                  id: "password",
+                  type: "password",
+                  label: this.labels?.password_label,
+                  placeholder: view === VIEWS.UPDATE_PASSWORD ? this.labels?.password_label : this.labels?.password_input_placeholder,
+                  autoFocus: view === VIEWS.UPDATE_PASSWORD || undefined,
+                  onChange: (val) => { this.password = val },
+                  autoComplete: view === 'sign_in' ? 'current-password' : 'new-password'
+                })
+              }
+
+              if (view === VIEWS.VERIFY_OTP && this.isPhone) {
+                inputs.push({
+                  id: "phone",
+                  type: "text",
+                  label: this.labels?.phone_input_label,
+                  autoFocus: true,
+                  placeholder: this.labels?.phone_input_placeholder,
+                  onChange: (val) => { this.phone = val }
+                })
+              }
+
+              if (view === VIEWS.VERIFY_OTP) {
+                inputs.push({
+                  id: "token",
+                  type: "text",
+                  label: this.labels?.token_input_label,
+                  placeholder: this.labels?.token_input_placeholder,
+                  onChange: (val) => { this.token = val }
+                })
+              }
+
+              return inputs
+            },
+            get links() {
+              const links = []
+              const view = Alpine.store('authView').view
+
+              if (this.isSignView) {
+                links.push(view !== VIEWS.SIGN_IN ? VIEWS.SIGN_IN : VIEWS.SIGN_UP)
+              }
+
+              if (view === VIEWS.SIGN_IN) {
+                links.push(VIEWS.FORGOTTEN_PASSWORD)
+              }
+
+              if (view === VIEWS.SIGN_IN && magicLink) {
+                links.push(VIEWS.MAGIC_LINK)
+              }
+
+              if (view === VIEWS.FORGOTTEN_PASSWORD || view === VIEWS.VERIFY_OTP) {
+                links.push(VIEWS.SIGN_IN)
+              }
+
+              if (view === VIEWS.UPDATE_PASSWORD) {
+                links.push(VIEWS.SIGN_UP)
+              }
+
+              return links
+            },
+            async handleProviderSignIn(provider) {
+              this.loading = true
+
+              await Alpine.store('app').withCaptureAuthError(() => Alpine.store('app').supabase.auth.signInWithOAuth({
+                provider,
+                options: {
+                  redirectTo,
+                  scopes: providerScopes?.[provider],
+                  queryParams
+                }
+              }))
+
+              this.loading = false
+            },
+            async handleSubmit(e) {
+              e.preventDefault()
+              this.loading = true
+              this.message = ''
+              const view = Alpine.store('authView').view
+              const withCaptureAuthError = Alpine.store('app').withCaptureAuthError
+              const auth = Alpine.store('app').supabase.auth
+
+              if (view === VIEWS.SIGN_IN) {
+                await withCaptureAuthError(() => auth.signInWithPassword({
+                  email: this.email,
+                  password: this.password
+                }))
+              }
+
+              if (view === VIEWS.SIGN_UP) {
+                const { data: { user, session }} = await withCaptureAuthError(() => auth.signUp({
+                  email: this.email,
+                  password: this.password,
+                  options: {
+                    emailRedirectTo: redirectTo,
+                    data: additionalData
+                  }
+                }))
+
+                // Check if session is null -> email confirmation setting is turned on
+                if (user && !session) {
+                  this.message = this.i18n?.sign_up?.confirmation_text
+                }
+              }
+
+              if (view === VIEWS.FORGOTTEN_PASSWORD) {
+                const { error } = await withCaptureAuthError(() => auth.resetPasswordForEmail(
+                  this.email,
+                  {
+                    redirectTo
+                  }
+                ))
+
+                if (!error) {
+                  this.message = this.i18n?.forgotten_password?.confirmation_text
+                }
+              }
+
+              if (view === VIEWS.MAGIC_LINK) {
+                const { error } = await withCaptureAuthError(() => auth.signInWithOtp({
+                  email: this.email,
+                  options: {
+                    emailRedirectTo: redirectTo
+                  }
+                }))
+
+                if (!error) {
+                  this.message = this.i18n?.magic_link?.confirmation_text
+                }
+              }
+
+              if (view === VIEWS.UPDATE_PASSWORD) {
+                const { error } = await withCaptureAuthError(() => auth.updateUser({ password: this.password }))
+
+                if (!error) {
+                  this.message = this.i18n?.update_password?.confirmation_text
+                }
+              }
+
+              if (view === VIEWS.VERIFY_OTP) {
+                const { phone, email, token } = this
+                await withCaptureAuthError(() => auth.verifyOtp(
+                  this.isPhone
+                    ? { phone, token, type: otpType }
+                    : { email, token, type: otpType }
+                ))
+              }
+
+              if (this.isMounted) this.loading = false
+            },
+            listener: undefined,
+            init() {
+                this.isMounted = true
+                // Overrides the authview if it is changed externally
+                this.listener = Alpine.store('app').supabase.auth.onAuthStateChange((event) => {
+                  if (event === 'PASSWORD_RECOVERY') {
+                    Alpine.store('authView').view = 'update_password'
+                  } else if (event === 'USER_UPDATED' || event === 'SIGNED_OUT') {
+                    Alpine.store('authView').view = 'sign_in'
+                  }
+                })
+            },
+            destroy() {
+              this.isMounted = false
+              this.listener.data.subscription.unsubscribe()
+            }
+          }
+        })
+      })
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+    <title>AlpineJS + UnoCSS + Supabase</title>
+  </head>
+  <body>
+    <div class="box-border p-5 relative" un-cloak>
+      <button
+        x-data
+        x-show="$store.app.user !== null"
+        class="absolute top-5 right-5 font-semibold hover:underline active:text-zinc-500 bg-transparent z-50"
+        @click="$store.app.withCaptureAuthError(() => $store.app.supabase.auth.signOut())"
+      >
+        Logout
+      </button>
+      <div class="relative flex flex-col items-center gap-6 pt-10 md:pt-6 md:flex-row md:justify-center md:items-start">
+        <div class="relative w-full max-w-sm border-[1px] border-slate-300 rounded-lg shadow-lg px-8 py-12">
+          <div class="mb-6 flex flex-col gap-3">
+            <h1 class="text-scale-1200 text-2xl">
+              Acme Industries
+            </h1>
+            <p class="text-scale-1100">
+              Sign in today for Supa stuff
+            </p>
+          </div>
+          <span x-data="authUI({ providers: [] })" x-show="$store.authView.view !== null">
+            <div x-show="isSignView && providers && providers.length > 0" class="flex flex-col gap-2">
+              <div class="flex flex-col gap-2 my-2">
+                <template x-for="provider in providers" :key="provider">
+                  <button
+                    class="flex justify-center items-center gap-2 rounded-md text-sm p-1 cursor-pointer border-[1px] border-zinc-950 w-full disabled:opacity-70 disabled:cursor-[unset] bg-transparent text-black hover:bg-stone-100"
+                    :disabled="loading"
+                    @click="handleProviderSignIn(provider)"
+                  >
+                    <span x-text="window.__supabase_auth_ui_shared.template(
+                      i18n?.[$store.authView.view === 'magic_link' ? 'sign_in' : $store.authView.view]?.social_provider_text,
+                      { provider: window.__supabase_auth_ui_shared.capitalize(provider) }
+                    )"></span>
+                    <span :class="window.__supabase_auth_ui_shared.providerIconClasses[provider]"></span>
+                  </button>
+                </template>
+              </div>
+              <div x-show="!onlyThirdPartyProviders" class="block my-4 h-[1px] w-full"></div>
+            </div>
+            <div x-show="!onlyThirdPartyProviders" class="flex flex-col gap-2">
+              <form
+                :id="$store.authView.view"
+                @submit="handleSubmit"
+                autoComplete
+                class="flex flex-col gap-2 my-2"
+              >
+                <template x-for="input in inputs" :key="input.id">
+                  <div>
+                    <label :for="input.id" x-text="input.label" class="text-sm mb-1 text-black block"></label>
+                    <input
+                      class="py-1 px-2 cursor-text border-[1px] border-solid border-black text-s w-full text-black box-border hover:[outline:none] focus:[outline:none]"
+                      :id="input.id"
+                      :name="input.id"
+                      :type="input.type"
+                      :autofocus="input.autoFocus"
+                      :autocomplete="input.autoComplete"
+                      :placeholder="input.placeholder"
+                      @change="input.onChange($event.target.value)"
+                    >
+                  </div>
+                </template>
+                <button
+                  class="flex justify-center items-center rounded-md text-sm p-1 cursor-pointer border-[1px] border-zinc-950 w-full mt-2 disabled:opacity-70 disabled:cursor-[unset] bg-amber-200 text-amber-950 hover:bg-amber-300"
+                  type="submit"
+                  :disabled="loading"
+                  x-text="loading ? labels?.loading_button_label : labels?.button_label"
+                >
+                </button>
+                <div x-show="showLinks" class="flex flex-col gap-3 my-2">
+                  <template x-for="v in links" :key="v">
+                    <a
+                      class="block text-xs text-center underline hover:text-blue-700"
+                      :href="`#${v}`"
+                      @click="$event.preventDefault(); $store.authView.view = v"
+                      x-text="i18n?.[v]?.link_text"
+                    >
+                    </a>
+                  </template>
+                </div>
+              </form>
+            </div>
+            <span x-show="!!message" x-text="message" class="block text-center text-xs mb-1 rounded-md py-6 px-4 border-[1px] border-black"></span>
+            <span x-show="$store.app.error !== null" x-text="$store.app.error?.message" class="block text-center text-xs mb-1 rounded-md py-6 px-4 border-[1px] text-red-900 bg-red-100 border-red-950"></span>
+          </span>
+        </div>
+        <div class="flex flex-col items-center gap-4 border-[1px] border-slate-300 rounded-lg shadow-sm p-8 mb-6 h-max">
+          <div class="text-scale-1200 text-base font-semibold">Component View</div>
+          <select
+            x-data
+            :value="$store.authView.view"
+            @change="$store.app.error = null; $store.authView.view = $event.target.value"
+            class="text-lg rounded border-[1px] border-slate-950 text-gray-600 pl-5 pr-10 h-12 bg-white hover:bg-slate-100 cursor-pointer appearance-none w-max text-center"
+          >
+            <template x-for="(v, i) in $store.authView.views" :key="i">
+              <option :value="v.id" x-text="v.title"></option>
+            </template>
+          </select>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
