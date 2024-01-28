@@ -1,0 +1,33 @@
+{
+  "name": "alpine_supastack_sandbox",
+  "version": "1.0.0",
+  "description": "Web app created with Supastack",
+  "main": "index.html",
+  "scripts": {
+    "dev": "vite --open",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BenIsenstein/alpine-supastack-sandbox.git"
+  },
+  "author": "Ben Isenstsin",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/BenIsenstein/alpine-supastack-sandbox/issues"
+  },
+  "homepage": "https://github.com/BenIsenstein/alpine-supastack-sandbox#readme",
+  "devDependencies": {
+    "@types/alpinejs": "^3.13.6",
+    "typescript": "^5.3.3",
+    "unocss": "^0.58.4",
+    "vite": "^5.0.12",
+    "vite-tsconfig-paths": "^4.3.1"
+  },
+  "dependencies": {
+    "@supabase/auth-ui-shared": "^0.1.8",
+    "@supabase/supabase-js": "^2.39.3",
+    "alpinejs": "^3.13.5"
+  }
+}
