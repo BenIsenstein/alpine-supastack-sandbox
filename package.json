@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Web app created with Supastack",
   "main": "index.html",
+  "type": "module",
   "scripts": {
     "dev": "vite --open",
     "build": "vite build",
@@ -19,6 +20,7 @@
   },
   "homepage": "https://github.com/BenIsenstein/alpine-supastack-sandbox#readme",
   "devDependencies": {
+    "@iconify-json/logos": "^1.1.42",
     "@types/alpinejs": "^3.13.6",
     "typescript": "^5.3.3",
     "unocss": "^0.58.4",

@@ -2,9 +2,8 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8">
-    <!-- <link rel="icon" type="image/svg+xml" href="/vite.svg"> -->
+    <link rel="icon" type="image/svg+xml" href="/vite.svg">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@unocss/reset/tailwind-compat.min.css"> -->
     <script type="module" src="/src/main.ts"></script>
     <title>AlpineJS + UnoCSS + Supabase</title>
   </head>
@@ -23,37 +22,7 @@
               Sign in today for Supa stuff
             </p>
           </div>
-          <span x-data="authUI({ providers: [] })" x-show="$store.authView.view !== null">
-            <div x-show="isSignView && providers && providers.length > 0" class="flex flex-col gap-2">
-              <div class="flex flex-col gap-2 my-2">
-                <template x-for="provider in providers" :key="provider">
-                  <button :disabled="loading" @click="handleProviderSignIn(provider)" class="flex justify-center items-center gap-2 rounded-md text-sm p-1 cursor-pointer border-[1px] border-zinc-950 w-full disabled:opacity-70 disabled:cursor-[unset] bg-transparent text-black hover:bg-stone-100">
-                    <span x-text="window.__supabase_auth_ui_shared.template(i18n?.[$store.authView.view === 'magic_link' ? 'sign_in' : $store.authView.view]?.social_provider_text, { provider: window.__supabase_auth_ui_shared.capitalize(provider) })"></span>
-                    <span :class="window.__supabase_auth_ui_shared.providerIconClasses[provider]"></span>
-                  </button>
-                </template>
-              </div>
-              <div x-show="!onlyThirdPartyProviders" class="block my-4 h-[1px] w-full"></div>
-            </div>
-            <div x-show="!onlyThirdPartyProviders" class="flex flex-col gap-2">
-              <form :id="$store.authView.view" @submit="handleSubmit" autoComplete class="flex flex-col gap-2 my-2">
-                <template x-for="input in inputs" :key="input.id">
-                  <div>
-                    <label :for="input.id" x-text="input.label" class="text-sm mb-1 text-black block"></label>
-                    <input :id="input.id" :name="input.id" :type="input.type" :autofocus="input.autoFocus" :autocomplete="input.autoComplete" :placeholder="input.placeholder" @change="input.onChange($event.target.value)" class="py-1 px-2 cursor-text border-[1px] border-solid border-black text-s w-full text-black box-border hover:[outline:none] focus:[outline:none]">
-                  </div>
-                </template>
-                <button type="submit" :disabled="loading" x-text="loading ? labels?.loading_button_label : labels?.button_label" class="flex justify-center items-center rounded-md text-sm p-1 cursor-pointer border-[1px] border-zinc-950 w-full mt-2 disabled:opacity-70 disabled:cursor-[unset] bg-amber-200 text-amber-950 hover:bg-amber-300"></button>
-                <div x-show="showLinks" class="flex flex-col gap-3 my-2">
-                  <template x-for="v in links" :key="v">
-                    <a x-text="i18n?.[v]?.link_text" :href="`#${v}`" @click.prevent="$store.authView.view = v" class="block text-xs text-center underline hover:text-blue-700"></a>
-                  </template>
-                </div>
-              </form>
-            </div>
-            <span x-show="!!message" x-text="message" class="block text-center text-xs mb-1 rounded-md py-6 px-4 border-[1px] border-black"></span>
-            <span x-show="!!$store.app.error" x-text="$store.app.error?.message" class="block text-center text-xs mb-1 rounded-md py-6 px-4 border-[1px] text-red-900 bg-red-100 border-red-950"></span>
-          </span>
+          <span x-data="authUI({ providers: [] })" x-show="$store.authView.view !== null"></span>
         </div>
         <div class="flex flex-col items-center gap-4 border-[1px] border-slate-300 rounded-lg shadow-sm p-8 mb-6 h-max">
           <div class="text-scale-1200 text-base font-semibold">Component View</div>
